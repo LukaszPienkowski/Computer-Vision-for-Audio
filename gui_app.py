@@ -101,17 +101,31 @@ class VoiceApp(ctk.CTk):
         )
         self.model_dropdown.grid(row=2, column=0, pady=(2, 8))
 
-        # File picker
+        # File picker frame
+        self.file_button_frame = ctk.CTkFrame(self.finetune_card, fg_color="transparent")
+        self.file_button_frame.grid(row=3, column=0, pady=8)
+
         self.add_file_button = ctk.CTkButton(
-            self.finetune_card,
-            text="Add Audio Files for Fine-Tuning",
+            self.file_button_frame,
+            text="Add Audio Files",
             command=self.add_wav_files,
             fg_color="#1565c0",
             hover_color="#0d47a1",
-            width=280,
+            width=150,
             height=40
         )
-        self.add_file_button.grid(row=3, column=0, pady=8)
+        self.add_file_button.grid(row=0, column=0, padx=5)
+
+        self.clear_queue_button = ctk.CTkButton(
+            self.file_button_frame,
+            text="Clear Queue",
+            command=self.clear_queue,
+            fg_color="#d32f2f",
+            hover_color="#b71c1c",
+            width=100,
+            height=40
+        )
+        self.clear_queue_button.grid(row=0, column=1, padx=5)
 
         self.added_files_label = ctk.CTkLabel(
             self.finetune_card,
@@ -310,6 +324,14 @@ class VoiceApp(ctk.CTk):
                 text=f"{count} file(s) queued: {preview}", text_color="#90caf9"
             )
 
+    def clear_queue(self):
+        """Clears the current fine-tuning queue."""
+        self.queued_files.clear()
+        self._refresh_queue_label()
+        self.finetune_status_label.configure(
+            text="Queue cleared.", text_color="#ffa726"
+        )
+
     def add_wav_files(self):
         """Open a multi-file picker and queue selected audio files."""
         file_paths = filedialog.askopenfilenames(
@@ -353,6 +375,7 @@ class VoiceApp(ctk.CTk):
 
         self.finetune_button.configure(state="disabled", text="Fine-Tuning...")
         self.add_file_button.configure(state="disabled")
+        self.clear_queue_button.configure(state="disabled")
         self.model_dropdown.configure(state="disabled")
         self.finetune_status_label.configure(text="Copying files & starting fine-tuning...", text_color="white")
 
@@ -410,6 +433,7 @@ class VoiceApp(ctk.CTk):
         )
         self.finetune_button.configure(state="normal", text="Run Fine-Tuning")
         self.add_file_button.configure(state="normal")
+        self.clear_queue_button.configure(state="normal")
         self.model_dropdown.configure(state="normal")
 
     def _on_fine_tune_error(self, err):
@@ -418,6 +442,7 @@ class VoiceApp(ctk.CTk):
         )
         self.finetune_button.configure(state="normal", text="Run Fine-Tuning")
         self.add_file_button.configure(state="normal")
+        self.clear_queue_button.configure(state="normal")
         self.model_dropdown.configure(state="normal")
 
 
