@@ -2,7 +2,6 @@ data/
 spectrograms/
 spectrograms_added/
 .env
-models/
 added_data/
 __pycache__/
 my_records/
