@@ -29,9 +29,23 @@ else:
     test_size = len(full_dataset) - train_size
     train_ds, test_ds = random_split(full_dataset, [train_size, test_size])
 
-    train_loader = DataLoader(train_ds, batch_size=32, shuffle=True)
-    test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
+    # Resample training batches by inverse class frequency so the minority
+    # class_1 appears as often as class_0 in each batch.
+    train_labels = [full_dataset.targets[i] for i in train_ds.indices]
+    class_counts = np.bincount(train_labels)
+    class_weights = 1.0 / class_counts
+    sample_weights = [class_weights[l] for l in train_labels]
+    sampler = torch.utils.data.WeightedRandomSampler(
+        weights=sample_weights,
+        num_samples=len(sample_weights),
+        replacement=True
+    )
+
+    train_loader = DataLoader(train_ds, batch_size=32, sampler=sampler)
+    test_loader  = DataLoader(test_ds,  batch_size=32, shuffle=False)
     print(f"Dataset loaded: {len(full_dataset)} images.")
+    print(f"Class counts — class_0: {class_counts[0]} | class_1: {class_counts[1]}")
+    print(f"Loss weights  — class_0: {class_weights[0]:.4f} | class_1: {class_weights[1]:.4f}")
 
 class CustomCNN(nn.Module):
     """
@@ -97,7 +111,7 @@ def evaluate_detailed(model, dataloader):
     prec, rec, f1, _ = precision_recall_fscore_support(all_labels, all_preds, average='weighted', zero_division=0)
     return {"Accuracy": acc, "Precision": prec, "Recall": rec, "F1-Score": f1}
 
-def train_model(model, name, epochs=50):
+def train_model(model, name, epochs=10):
     """
     Trains a given PyTorch model, evaluates its performance on the test set, and saves 
     the resulting weights to the 'models/' directory.
@@ -105,14 +119,20 @@ def train_model(model, name, epochs=50):
     Args:
         model (nn.Module): The PyTorch model to train.
         name (str): The name identifier for the model (used for saving the weights file).
-        epochs (int, optional): The maximum number of training epochs. Defaults to 50.
+        epochs (int, optional): The maximum number of training epochs.
 
     Returns:
         dict: The evaluation metrics for the trained model on the test set.
     """
     print(f"Training {name}...")
     model = model.to(device)
-    criterion = nn.CrossEntropyLoss()
+
+    # Weight the loss by inverse class frequency so mistakes on the rare
+    # class_1 are penalised proportionally to the class imbalance ratio.
+    train_labels = [full_dataset.targets[i] for i in train_ds.indices]
+    class_counts = np.bincount(train_labels)
+    weights = torch.tensor(1.0 / class_counts, dtype=torch.float).to(device)
+    criterion = nn.CrossEntropyLoss(weight=weights)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     
     best_loss = float('inf')
