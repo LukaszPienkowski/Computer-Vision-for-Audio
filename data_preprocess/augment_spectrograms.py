@@ -62,12 +62,12 @@ def augment_added_data(added_dir="spectrograms_added/class_1", factor=2):
 
 def main():
     """
-    Balances the spectrogram dataset by augmenting Class 1 to match the count of Class 0.
+    Applies 2× image-level augmentation to every original spectrogram in class_1.
 
-    Counts PNG images in `spectrograms/class_0` and `spectrograms/class_1`. If Class 1
-    has fewer images, generates the required number of augmented copies using randomly
-    chosen image-level transformations (time mask, frequency mask, Gaussian noise),
-    sampling randomly from the existing original Class 1 spectrograms.
+    The dataset is intentionally imbalanced (class_0 >> class_1). Rather than
+    forcing a 1:1 ratio, this function only augments class_1 to improve its
+    representation without destroying the natural imbalance that reflects the
+    real task: detecting a small set of target voices among many others.
     """
     class_0_dir = "spectrograms/class_0"
     class_1_dir = "spectrograms/class_1"
@@ -79,48 +79,11 @@ def main():
     class_0_files = [f for f in os.listdir(class_0_dir) if f.endswith('.png')]
     class_1_files = [f for f in os.listdir(class_1_dir) if f.endswith('.png') and not '_aug_' in f]
     
-    target_count = len(class_0_files)
-    current_count = len([f for f in os.listdir(class_1_dir) if f.endswith('.png')])
-    needed_count = target_count - current_count
-    
-    print(f"Class 0 count: {target_count}")
-    print(f"Class 1 count: {current_count}")
-    
-    if needed_count <= 0:
-        print("No augmentation needed. Classes are already balanced.")
-        return
-        
-    print(f"Generating {needed_count} augmented files for Class 1...")
-    
-    augmentations = [
-        ("tmask", lambda img: time_mask(img)),
-        ("fmask", lambda img: freq_mask(img)),
-        ("noise", lambda img: add_noise_to_image(img, factor=random.uniform(0.01, 0.05)))
-    ]
-    
-    for i in range(needed_count):
-        file_to_augment = random.choice(class_1_files)
-        file_path = os.path.join(class_1_dir, file_to_augment)
-        
-        try:
-            img = Image.open(file_path)
-            
-            aug_name, aug_func = random.choice(augmentations)
-            aug_img = aug_func(img)
-            
-            base_name = file_to_augment.replace('.png', '')
-            new_file_name = f"{base_name}_aug_{aug_name}_{i}.png"
-            new_file_path = os.path.join(class_1_dir, new_file_name)
-            
-            aug_img.save(new_file_path)
-            
-            if (i+1) % 50 == 0:
-                print(f"Generated {i+1}/{needed_count} files...")
-                
-        except Exception as e:
-            print(f"Error augmenting {file_to_augment}: {e}")
-            
-    print(f"Successfully balanced classes. Class 1 now has {target_count} files.")
+    print(f"Class 0: {len(class_0_files)} | Class 1: {len(class_1_files)}")
+    augment_added_data(added_dir=class_1_dir, factor=2)
+    final_class_1_count = len([f for f in os.listdir(class_1_dir) if f.endswith('.png')])
+    print(f"Augmentation complete. Class 1 now has {final_class_1_count} files.")
+
 
 if __name__ == "__main__":
     main()
