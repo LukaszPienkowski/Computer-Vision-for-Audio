@@ -3,5 +3,5 @@ spectrograms/
 spectrograms_added/
 .env
 *.pth
-data_added/
+added_data/
 __pycache__/
