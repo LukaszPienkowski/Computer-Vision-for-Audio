@@ -10,11 +10,12 @@ The `get_data.py` script downloads audio files from the Hugging Face Hub (defaul
 - **Hugging Face Integration**: Streams the dataset using the `datasets` library. Requires a valid Hugging Face token (`HF_TOKEN` in a `.env` file).
 - **Data Filtering**: Ensures only one audio file per speaker is downloaded and filters out recordings shorter than 25 seconds.
 - **Class Splitting**: Automatically divides the downloaded data into two classes (15% in `class_1` and 85% in `class_0`) to simulate an imbalanced dataset or specific data distribution.
+- **Local Data Integration**: Automatically checks for a `my_records` folder. If found, any locally recorded `.wav` files are copied into `data/class_0`. This injects local microphone background noise into the base dataset to eliminate domain shift bias.
 - **File Output**: Cleans and recreates the data directories, saving the `.wav` files into `data/class_0` and `data/class_1`.
 
 ## `generating_spectrograms.py`
 
-The `generating_spectrograms.py` script converts downloaded audio files into Mel spectrogram images for use in computer vision tasks.
+The `generating_spectrograms.py` script converts downloaded audio files into Mel spectrogram images for use in computer vision tasks. After generation, it automatically applies post-processing to clean the dataset.
 
 ### Functionality:
 - **process_and_save_spectrograms**: The core function that drives the spectrogram pipeline.
@@ -22,6 +23,8 @@ The `generating_spectrograms.py` script converts downloaded audio files into Mel
   - **Audio Splitting**: Processes files in order, dividing them into consecutive 4-second segments, and discarding any leftovers.
   - **Spectrogram Generation**: Converts each segment into a normalized Mel spectrogram using the `audio_utils` module.
   - **Sequential Naming & Output**: Saves each segment as a PNG image in the specified output directory, named sequentially for each speaker (e.g., `{speaker_id}_{index}.png`).
+- **remove_duplicate_spectrograms**: Scans a spectrogram directory and removes physically identical PNG files using MD5 hashing. Keeps the first occurrence of each unique image and deletes the rest. Augmented files (`_aug_`) are skipped.
+- **remove_silence_from_spectrograms**: Cleans each spectrogram image in-place by dropping silent time-frame columns (columns whose maximum pixel intensity falls below a configurable threshold) and trimming a configurable percentage from the right end of the image to remove fade-out artefacts. Fully silent images are deleted. Augmented files (`_aug_`) are skipped.
 
 ## `audio_utils.py`
 
@@ -54,3 +57,36 @@ The `main.py` script is the top-level pipeline orchestrator. Run this file to ex
 - **Audio Data Check**: Verifies whether audio files exist in `data/class_0` and `data/class_1`. If not, automatically runs `get_data.py` to download them.
 - **Spectrogram Check**: Verifies whether spectrogram images exist in `spectrograms/class_0` and `spectrograms/class_1`. If not, automatically runs `generating_spectrograms.py`.
 - **Augmentation Check**: Runs `augment_spectrograms.py`, which self-checks class balance and only generates augmented images if needed.
+
+## `model.py`
+
+The `model.py` script serves as the central definition file for the project's Neural Network architectures and includes standalone training routines for establishing base models from the generated spectrograms.
+
+### Functionality:
+- **`CustomCNN`**: A lightweight PyTorch Convolutional Neural Network architecture designed for classifying audio spectrogram images. Features three convolutional layers with batch normalization and max pooling.
+- **`DeepCNN`**: A deeper, more complex architecture tailored for difficult classifications. Features five convolutional layers with batch normalization, higher dropout rates, and more parameters to prevent overfitting.
+- **`evaluate_detailed`**: Evaluates a trained PyTorch model against a given dataloader and calculates detailed performance metrics including Accuracy, Precision, Recall, and F1-Score.
+- **`train_model`**: Drives the standalone training loop. Trains a specified PyTorch model architecture, evaluates its performance on the test set, saves the resulting optimal weights to the `models/` directory, and returns the evaluation metrics.
+- **Standalone Execution**: When run directly, the script will automatically train both the `CustomCNN` and `DeepCNN` models on the data in the `spectrograms/` directory and display a comparative performance table and bar chart.
+
+---
+
+## `EDA_spectrograms.ipynb`
+
+This Jupyter Notebook focuses on the Exploratory Data Analysis (EDA) of the generated image dataset. It allows for deep visual inspection of the spectrograms to ensure data quality before model training.
+
+### Functionality:
+- **Data Cleaning Verification**: Checks for duplicate images using MD5 hashing to ensure the dataset is perfectly clean.
+- **Mean Spectrogram Analysis**: Computes and visualizes the average macro-level visual features for each class, helping to identify consistent acoustic differences between Class 0 and Class 1.
+- **Pixel Intensity Distributions**: Plots density histograms of pixel intensities (loudness/energy) to uncover systematic biases, such as one class being consistently louder than the other.
+
+---
+
+## `Model_Driven_EDA.ipynb`
+
+This Jupyter Notebook performs Model-Driven Exploratory Data Analysis. It leverages the trained Convolutional Neural Networks (from `model.py`) to analyze the dataset from the model's perspective, mapping how the AI interprets the audio.
+
+### Functionality:
+- **Feature Extraction**: Uses a custom wrapper to extract high-dimensional latent embeddings (the raw features extracted just before the final classification layer) for any given spectrogram.
+- **Prediction Confidence Analysis**: Evaluates the model's certainty on individual samples to identify difficult or ambiguous audio clips.
+- **Cosine Similarity Search**: Calculates the cosine distance between extracted embeddings to find and visualize the most "similar" audio samples in the latent space, revealing what acoustic features the model groups together.
