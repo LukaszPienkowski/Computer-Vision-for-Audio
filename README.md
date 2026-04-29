@@ -69,6 +69,23 @@ The `model.py` script serves as the central definition file for the project's Ne
 - **`train_model`**: Drives the standalone training loop. Trains a specified PyTorch model architecture, evaluates its performance on the test set, saves the resulting optimal weights to the `models/` directory, and returns the evaluation metrics.
 - **Standalone Execution**: When run directly, the script will automatically train both the `CustomCNN` and `DeepCNN` models on the data in the `spectrograms/` directory and display a comparative performance table and bar chart.
 
+## `fine_tune_model.py`
+
+The `fine_tune_model.py` script adapts a pre-trained base model to recognize a specific user's voice by fine-tuning the neural network weights on new custom data.
+
+### Functionality:
+- **`preprocess_added_data`**: Reads custom audio files (`.wav`, `.mp3`, `.flac`) from a directory, chunks them into 4-second segments, and generates spectrograms in the `spectrograms_added/` folder.
+- **`fine_tune`**: Core fine-tuning loop. Mixes the user's new custom spectrograms (`class_1`) with base dataset spectrograms (`class_0`) to prevent catastrophic forgetting. Uses early stopping and automatically detects and loads the best pre-trained weights to adapt to the new voice profile.
+
+## `gui_app.py`
+
+The `gui_app.py` script is a fully featured graphical application built with `customtkinter`. It serves as the primary front-end for users to interact with the trained models.
+
+### Functionality:
+- **Microphone Integration**: Allows users to record their voice directly from their microphone to test the model's live inference accuracy.
+- **Live Inference**: Automatically chunks live audio or selected files, processes them into spectrogram images using the `magma` colormap, and passes them to the loaded neural network for real-time classification.
+- **Fine-Tuning Integration**: Provides a visual workflow to select audio files, trigger the `fine_tune_model.py` backend script, and automatically reload the updated weights for immediate testing.
+
 ---
 
 ## `EDA_spectrograms.ipynb`
