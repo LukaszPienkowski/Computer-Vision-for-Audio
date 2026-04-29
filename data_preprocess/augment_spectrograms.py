@@ -33,11 +33,21 @@ def augment_added_data(added_dir="spectrograms_added/class_1", factor=2):
         ("noise", lambda img: add_noise_to_image(img, factor=random.uniform(0.01, 0.05)))
     ]
     
+    all_files = set(os.listdir(added_dir))
+    
     for f in files:
+        base_name = f.rsplit('.', 1)[0]
+        
+        # Check if this specific base_name has already been augmented
+        already_augmented = any(
+            existing_f.startswith(f"{base_name}_aug_") for existing_f in all_files
+        )
+        if already_augmented:
+            continue
+            
         file_path = os.path.join(added_dir, f)
         try:
             img = Image.open(file_path)
-            base_name = f.rsplit('.', 1)[0]
             
             for i in range(factor):
                 aug_name, aug_func = random.choice(augmentations)
