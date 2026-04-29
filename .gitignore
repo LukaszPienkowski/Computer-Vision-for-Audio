@@ -1,0 +1,7 @@
+data/
+spectrograms/
+spectrograms_added/
+.env
+*.pth
+data_added/
+__pycache__/
