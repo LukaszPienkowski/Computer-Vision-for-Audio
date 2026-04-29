@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 from collections import defaultdict
 from audio_utils import generate_mel_spectrogram, save_spectrogram
+import augment_spectrograms
 
 def process_and_save_spectrograms(input_dir, output_dir):
     """
@@ -15,9 +16,11 @@ def process_and_save_spectrograms(input_dir, output_dir):
         output_dir (str): Path to the directory where the resulting spectrogram images will be saved.
         
     Details:
-        - Groups files by speaker ID based on the filename prefix (e.g., '123_1.wav' -> '123').
-        - Discards any leftover audio that is less than the 4-second segment duration.
-        - Names output images sequentially per speaker (e.g., '{speaker_id}_{index}.png').
+        - Scans the input directory for supported audio formats.
+        - Groups files by speaker ID based on the filename prefix (e.g., '123' from '123_1.wav').
+        - Divides the audio into consecutive 4-second segments. Discards any leftover audio shorter than 4 seconds.
+        - Converts each segment into a normalized Mel spectrogram in decibels (scaled 0-1).
+        - Names output images sequentially per speaker (e.g., '{speaker_id}_{index}.png') and saves them.
     """
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     
@@ -57,12 +60,13 @@ def process_and_save_spectrograms(input_dir, output_dir):
                     
                     output_path = os.path.join(output_dir, f"{speaker_id}_{segment_index}.png")
                     save_spectrogram(S_dB_norm, output_path)
+                    
                     segment_index += 1
                 
             except Exception as e:
                 print(f"Error in a file {file_name}: {e}")
 
-if __name__ == "__main__":
+def main():
     classes = ["class_0", "class_1"]
     base_input_dir = "data"
     base_output_dir = "spectrograms"
@@ -72,5 +76,8 @@ if __name__ == "__main__":
         output_dir = os.path.join(base_output_dir, cls)
         
         process_and_save_spectrograms(input_dir, output_dir)
+        
+    print("Spectrogram generation complete.")
 
-    print("Done")
+if __name__ == "__main__":
+    main()

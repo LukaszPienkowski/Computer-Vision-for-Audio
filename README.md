@@ -34,3 +34,23 @@ The `audio_utils.py` script contains core helper functions for processing audio 
 - **time_mask**: Applies a random vertical black bar to the spectrogram image to simulate missing audio frames over a specific duration (Data Augmentation).
 - **freq_mask**: Applies a random horizontal black bar to the spectrogram image to simulate missing frequency bands (Data Augmentation).
 - **add_noise_to_image**: Adds a specified amount of random Gaussian noise directly to the spectrogram pixels (Data Augmentation).
+
+## `augment_spectrograms.py`
+
+The `augment_spectrograms.py` script balances the spectrogram dataset by generating augmented image copies of the minority class using computer vision techniques.
+
+### Functionality:
+- **augment_added_data**: Applies image-level augmentations to spectrogram PNG files in a given directory. Generates `factor` augmented copies per original image using randomly chosen transformations. Augmented files are marked with an `_aug_` infix to prevent re-processing.
+- **main**: Compares the image counts of `class_0` and `class_1` in the `spectrograms/` directory. If `class_1` is underrepresented, generates the exact number of additional augmented samples needed, sampling randomly from existing original Class 1 spectrograms. Available transformations:
+  - **Time Mask**: Applies a random vertical black bar to simulate missing audio frames.
+  - **Frequency Mask**: Applies a random horizontal black bar to simulate missing frequency bands.
+  - **Gaussian Noise**: Adds random pixel noise to simulate measurement variability.
+
+## `main.py`
+
+The `main.py` script is the top-level pipeline orchestrator. Run this file to execute the entire preprocessing workflow from raw data to a balanced spectrogram dataset.
+
+### Functionality:
+- **Audio Data Check**: Verifies whether audio files exist in `data/class_0` and `data/class_1`. If not, automatically runs `get_data.py` to download them.
+- **Spectrogram Check**: Verifies whether spectrogram images exist in `spectrograms/class_0` and `spectrograms/class_1`. If not, automatically runs `generating_spectrograms.py`.
+- **Augmentation Check**: Runs `augment_spectrograms.py`, which self-checks class balance and only generates augmented images if needed.
