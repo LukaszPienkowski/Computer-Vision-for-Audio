@@ -379,9 +379,12 @@ class VoiceApp(ctk.CTk):
         self.model_dropdown.configure(state="disabled")
         self.finetune_status_label.configure(text="Copying files & starting fine-tuning...", text_color="white")
 
-        # Copy queued files to added_data/
+        # Clear and repopulate added_data/ so stale files from previous
+        # fine-tuning runs don't contaminate the new training set.
         added_dir = "added_data"
-        os.makedirs(added_dir, exist_ok=True)
+        if os.path.exists(added_dir):
+            shutil.rmtree(added_dir)
+        os.makedirs(added_dir)
         for fp in self.queued_files:
             dest = os.path.join(added_dir, os.path.basename(fp))
             try:
@@ -404,21 +407,25 @@ class VoiceApp(ctk.CTk):
             self.after(0, lambda err=str(e): self._on_fine_tune_error(err))
 
     def _on_fine_tune_done(self):
-        # Reload from the newly saved fine-tuned model in models/
-        new_path = os.path.join(MODELS_DIR, "CustomCNN_fine_tuned.pth")
+        # Determine which fine-tuned model was produced based on the selected base
+        selected = self.model_var.get()
+        if "DeepCNN" in selected:
+            fine_tuned_name = "DeepCNN_fine_tuned.pth"
+        else:
+            fine_tuned_name = "CustomCNN_fine_tuned.pth"
+
+        new_path = os.path.join(MODELS_DIR, fine_tuned_name)
         self.model = self.load_model(path=new_path if os.path.exists(new_path) else None)
 
         # Refresh the model dropdowns
         updated_models = self._available_models()
         self.model_dropdown.configure(values=updated_models)
         self.class_model_dropdown.configure(values=updated_models)
-        
-        # If the newly fine-tuned model exists, select it for both
-        if "CustomCNN_fine_tuned.pth" in updated_models:
-            self.model_var.set("CustomCNN_fine_tuned.pth")
-            self.class_model_var.set("CustomCNN_fine_tuned.pth")
-            # Explicitly load it for classification
-            self._on_classification_model_change("CustomCNN_fine_tuned.pth")
+
+        if fine_tuned_name in updated_models:
+            self.model_var.set(fine_tuned_name)
+            self.class_model_var.set(fine_tuned_name)
+            self._on_classification_model_change(fine_tuned_name)
         else:
             self.model_var.set(self._default_model_choice())
             self.class_model_var.set(self._default_model_choice())
