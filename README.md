@@ -4,14 +4,14 @@ This repository contains tools for fetching audio datasets and generating spectr
 
 ## `get_data.py`
 
-The `get_data.py` script downloads audio files from the Hugging Face Hub (defaulting to the `facebook/voxpopuli` dataset).
+The `get_data.py` script downloads English audio from the `facebook/voxpopuli` Hugging Face dataset and organises it into two classes by speaker identity.
 
 ### Functionality:
-- **Hugging Face Integration**: Streams the dataset using the `datasets` library. Requires a valid Hugging Face token (`HF_TOKEN` in a `.env` file).
-- **Data Filtering**: Ensures only one audio file per speaker is downloaded and filters out recordings shorter than 25 seconds.
-- **Class Splitting**: Automatically divides the downloaded data into two classes (15% in `class_1` and 85% in `class_0`) to simulate an imbalanced dataset or specific data distribution.
-- **Local Data Integration**: Automatically checks for a `my_records` folder. If found, any locally recorded `.wav` files are copied into `data/class_0`. This injects local microphone background noise into the base dataset to eliminate domain shift bias.
-- **File Output**: Cleans and recreates the data directories, saving the `.wav` files into `data/class_0` and `data/class_1`.
+- **Hugging Face Integration**: Streams data using the `datasets` library. Requires a `HF_TOKEN` in a `.env` file.
+- **Data Filtering**: Keeps one recording per speaker and discards files shorter than 25 seconds.
+- **Class Split by Speaker**: Downloads up to 500 unique speakers into `class_0`. At the end, randomly selects 5–7 of them and moves their files to `class_1`. Both classes share the same audio domain, forcing the model to learn voice characteristics rather than audio format differences.
+- **Local Data Integration**: Copies `.wav` files from `my_records/` into `data/class_0` to inject local microphone noise and reduce domain shift.
+- **File Output**: Cleans and recreates `data/class_0` and `data/class_1` on each run.
 
 ## `generating_spectrograms.py`
 
@@ -40,11 +40,11 @@ The `audio_utils.py` script contains core helper functions for processing audio 
 
 ## `augment_spectrograms.py`
 
-The `augment_spectrograms.py` script balances the spectrogram dataset by generating augmented image copies of the minority class using computer vision techniques.
+The `augment_spectrograms.py` script applies image-level augmentation to the minority class spectrograms. The dataset is intentionally imbalanced (class_0 >> class_1), so augmentation is applied only to class_1 to improve its representation without forcing an artificial 1:1 balance.
 
 ### Functionality:
-- **augment_added_data**: Applies image-level augmentations to spectrogram PNG files in a given directory. Generates `factor` augmented copies per original image using randomly chosen transformations. Augmented files are marked with an `_aug_` infix to prevent re-processing.
-- **main**: Compares the image counts of `class_0` and `class_1` in the `spectrograms/` directory. If `class_1` is underrepresented, generates the exact number of additional augmented samples needed, sampling randomly from existing original Class 1 spectrograms. Available transformations:
+- **augment_added_data**: Applies image-level augmentations to spectrogram PNG files in a given directory. Generates `factor` augmented copies per original image. Augmented files are marked with an `_aug_` infix to prevent re-processing.
+- **main**: Applies 2× augmentation to all original class_1 spectrograms. Reports counts for both classes and leaves class_0 untouched. Available transformations:
   - **Time Mask**: Applies a random vertical black bar to simulate missing audio frames.
   - **Frequency Mask**: Applies a random horizontal black bar to simulate missing frequency bands.
   - **Gaussian Noise**: Adds random pixel noise to simulate measurement variability.
@@ -60,22 +60,24 @@ The `main.py` script is the top-level pipeline orchestrator. Run this file to ex
 
 ## `model.py`
 
-The `model.py` script serves as the central definition file for the project's Neural Network architectures and includes standalone training routines for establishing base models from the generated spectrograms.
+The `model.py` script defines the Neural Network architectures and contains training routines for establishing base models from the generated spectrograms.
 
 ### Functionality:
-- **`CustomCNN`**: A lightweight PyTorch Convolutional Neural Network architecture designed for classifying audio spectrogram images. Features three convolutional layers with batch normalization and max pooling.
-- **`DeepCNN`**: A deeper, more complex architecture tailored for difficult classifications. Features five convolutional layers with batch normalization, higher dropout rates, and more parameters to prevent overfitting.
-- **`evaluate_detailed`**: Evaluates a trained PyTorch model against a given dataloader and calculates detailed performance metrics including Accuracy, Precision, Recall, and F1-Score.
-- **`train_model`**: Drives the standalone training loop. Trains a specified PyTorch model architecture, evaluates its performance on the test set, saves the resulting optimal weights to the `models/` directory, and returns the evaluation metrics.
-- **Standalone Execution**: When run directly, the script will automatically train both the `CustomCNN` and `DeepCNN` models on the data in the `spectrograms/` directory and display a comparative performance table and bar chart.
+- **`CustomCNN`**: A lightweight CNN with three convolutional layers, batch normalisation, and max pooling.
+- **`DeepCNN`**: A deeper architecture with five convolutional layers, higher dropout, and more parameters.
+- **Imbalanced training**: Uses `WeightedRandomSampler` to rebalance training batches and a class-weighted `CrossEntropyLoss` so the minority class_1 is not ignored during optimisation.
+- **`evaluate_detailed`**: Evaluates a model on a dataloader and returns Accuracy, Precision, Recall, and F1-Score.
+- **`train_model`**: Runs the training loop with early stopping, saves the best weights to `models/`, and returns evaluation metrics.
+- **Standalone Execution**: Trains both `CustomCNN` and `DeepCNN` and prints a comparative performance table.
 
 ## `fine_tune_model.py`
 
-The `fine_tune_model.py` script adapts a pre-trained base model to recognize a specific user's voice by fine-tuning the neural network weights on new custom data.
+The `fine_tune_model.py` script adapts a pre-trained base model to recognise additional target voices supplied by the end user.
 
 ### Functionality:
-- **`preprocess_added_data`**: Reads custom audio files (`.wav`, `.mp3`, `.flac`) from a directory, chunks them into 4-second segments, and generates spectrograms in the `spectrograms_added/` folder.
-- **`fine_tune`**: Core fine-tuning loop. Mixes the user's new custom spectrograms (`class_1`) with base dataset spectrograms (`class_0`) to prevent catastrophic forgetting. Uses early stopping and automatically detects and loads the best pre-trained weights to adapt to the new voice profile.
+- **`preprocess_added_data`**: Reads audio files (`.wav`, `.mp3`, `.flac`) from `added_data/`, chunks them into 4-second segments, and saves Mel spectrograms to `spectrograms_added/class_1/`.
+- **`augment_class1_specs`**: Applies 4× image augmentation (time mask, frequency mask, Gaussian noise) to the generated spectrograms to compensate for the small number of user-supplied samples.
+- **`fine_tune`**: Mixes augmented class_1 spectrograms with up to 10× as many class_0 spectrograms from the base dataset to prevent catastrophic forgetting. Applies `WeightedRandomSampler` and class-weighted loss to handle the remaining imbalance. Trains with early stopping and saves the best weights.
 
 ## `gui_app.py`
 
@@ -107,3 +109,10 @@ This Jupyter Notebook performs Model-Driven Exploratory Data Analysis. It levera
 - **Feature Extraction**: Uses a custom wrapper to extract high-dimensional latent embeddings (the raw features extracted just before the final classification layer) for any given spectrogram.
 - **Prediction Confidence Analysis**: Evaluates the model's certainty on individual samples to identify difficult or ambiguous audio clips.
 - **Cosine Similarity Search**: Calculates the cosine distance between extracted embeddings to find and visualize the most "similar" audio samples in the latent space, revealing what acoustic features the model groups together.
+
+---
+
+## To Do
+
+- [ ] Create report
+- [ ] Create unit tests
