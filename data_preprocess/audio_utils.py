@@ -51,8 +51,11 @@ def spectrogram_to_image(S_dB_norm, size=(128, 128)):
     Returns:
         PIL.Image.Image: The resized PIL Image representation of the spectrogram.
     """
-    img_data = (S_dB_norm * 255).astype(np.uint8)
-    img = Image.fromarray(img_data)
+    cmap = plt.get_cmap('magma')
+    rgba_img = cmap(S_dB_norm)
+    rgb_img = (rgba_img[:, :, :3] * 255).astype(np.uint8)
+    img = Image.fromarray(rgb_img, 'RGB')
+    img = img.convert('L')
     if size:
         img = img.resize(size)
     return img
