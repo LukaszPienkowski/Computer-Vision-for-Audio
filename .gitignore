@@ -2,6 +2,6 @@ data/
 spectrograms/
 spectrograms_added/
 .env
-*.pth
+models/
 added_data/
 __pycache__/
