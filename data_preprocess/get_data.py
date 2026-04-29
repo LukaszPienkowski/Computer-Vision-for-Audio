@@ -24,6 +24,8 @@ def main(subset="en", limit=300, dataset_name="facebook/voxpopuli"):
         - Filters out audio recordings shorter than 25 seconds.
         - Automatically splits data into 'class_1' (15%) and 'class_0' (85%).
         - Cleans and recreates local 'data/class_0' and 'data/class_1' directories before saving.
+        - Automatically collects any local .wav recordings from the 'my_records' folder 
+          and appends them to 'class_0' to mitigate microphone domain shift.
     """
     ds = load_dataset(path=dataset_name, name=subset, split="train", streaming=True, token=hf_token)
     ds = ds.cast_column("audio", Audio(decode=False))
@@ -64,7 +66,26 @@ def main(subset="en", limit=300, dataset_name="facebook/voxpopuli"):
         if downloaded_count % 50 == 0:
             print(f"Downloaded {downloaded_count}/{limit} files...")
         
-    print(f"Successfully finished downloading {downloaded_count} files.")
+    print(f"Successfully finished downloading {downloaded_count} files from Hugging Face.")
+    
+    # Add local recordings to class_0 (non-speaking background noise)
+    my_records_dir = "my_records"
+    if os.path.exists(my_records_dir):
+        print(f"Checking for local non-speaking recordings in '{my_records_dir}'...")
+        local_count = 0
+        for filename in os.listdir(my_records_dir):
+            if filename.endswith(".wav"):
+                src_path = os.path.join(my_records_dir, filename)
+                dest_path = os.path.join("data", "class_0", f"local_record_{local_count}.wav")
+                shutil.copy2(src_path, dest_path)
+                local_count += 1
+        if local_count > 0:
+            print(f"Added {local_count} local recordings to class_0.")
+        else:
+            print(f"No .wav files found in {my_records_dir}.")
+    else:
+        print(f"'{my_records_dir}' folder not found. Skipping local data integration.")
+        
     os._exit(0)
 
 if __name__ == "__main__":

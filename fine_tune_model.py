@@ -13,6 +13,15 @@ from model import CustomCNN, DeepCNN
 
 # 2. Preprocessing logic for added data
 def preprocess_added_data(input_base, output_base):
+    """
+    Reads custom audio recordings (.wav, .mp3, .flac) from an input directory,
+    splits them into uniform 4-second chunks to match the base dataset, and
+    converts them into Mel spectrogram images.
+
+    Args:
+        input_base (str): The directory containing the raw user audio files.
+        output_base (str): The directory where the generated spectrograms will be saved.
+    """
     if not os.path.exists(input_base):
         print(f"Directory {input_base} does not exist.")
         return
@@ -64,6 +73,17 @@ class FixedLabelDataset(Dataset):
         return image, torch.tensor(self.label, dtype=torch.long)
 
 def fine_tune(added_audio_dir="added_data", added_specs_dir="spectrograms_added", models_dir="models", model_path=None):
+    """
+    Fine-tunes a pre-trained base model to recognize a custom dataset of audio.
+    It automatically mixes the user's new spectrograms (Class 1) with existing 
+    base dataset spectrograms (Class 0) to prevent Catastrophic Forgetting.
+
+    Args:
+        added_audio_dir (str, optional): Directory containing raw user audio. Defaults to "added_data".
+        added_specs_dir (str, optional): Directory to save generated spectrograms. Defaults to "spectrograms_added".
+        models_dir (str, optional): Directory to load/save model weights. Defaults to "models".
+        model_path (str, optional): Specific path to a pre-trained model. If None, it auto-detects.
+    """
     device = torch.device("cpu")
     
     if not os.path.exists(added_audio_dir) or not os.listdir(added_audio_dir):
