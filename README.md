@@ -63,12 +63,17 @@ The `main.py` script is the top-level pipeline orchestrator. Run this file to ex
 The `model.py` script defines the Neural Network architectures and contains training routines for establishing base models from the generated spectrograms.
 
 ### Functionality:
+- **`speaker_level_split`**: Splits the dataset into train / val / test at the **speaker** level (70 / 15 / 15). All spectrogram segments from a single speaker land entirely in one partition, preventing data leakage.
+- **`make_weighted_loader`**: Builds a `WeightedRandomSampler`-backed DataLoader that rebalances batches by inverse class frequency.
 - **`CustomCNN`**: A lightweight CNN with three convolutional layers, batch normalisation, and max pooling.
-- **`DeepCNN`**: A deeper architecture with five convolutional layers, higher dropout, and more parameters.
-- **Imbalanced training**: Uses `WeightedRandomSampler` to rebalance training batches and a class-weighted `CrossEntropyLoss` so the minority class_1 is not ignored during optimisation.
-- **`evaluate_detailed`**: Evaluates a model on a dataloader and returns Accuracy, Precision, Recall, and F1-Score.
-- **`train_model`**: Runs the training loop with early stopping, saves the best weights to `models/`, and returns evaluation metrics.
-- **Standalone Execution**: Trains both `CustomCNN` and `DeepCNN` and prints a comparative performance table.
+- **`DeepCNN`**: A deeper architecture with five convolutional layers (two VGG-style blocks), higher dropout, and more parameters.
+- **`evaluate_detailed`**: Evaluates a model on a DataLoader and returns Accuracy, Precision, Recall, F1-Score, **FAR** (False Acceptance Ratio), and **FRR** (False Rejection Ratio). Metrics are reported for train, val, and test splits separately.
+- **`train_model`**: Runs the training loop with:
+  - Class-weighted `CrossEntropyLoss` to handle class imbalance.
+  - Early stopping monitored on the **validation** set (not the test set).
+  - Choice of **Adam** (`lr=0.001`) or **SGD** (`lr=0.01`, momentum=0.9, weight_decay=1e-4, StepLR scheduler).
+  - Loss curve saved to `plots/` after each run.
+- **Standalone Execution**: Trains `CustomCNN` and `DeepCNN` with both Adam and SGD (4 variants total), prints FAR/FRR for each split, and saves a comparative bar chart and CSV to `plots/`.
 
 ## `fine_tune_model.py`
 
@@ -81,12 +86,37 @@ The `fine_tune_model.py` script adapts a pre-trained base model to recognise add
 
 ## `gui_app.py`
 
-The `gui_app.py` script is a fully featured graphical application built with `customtkinter`. It serves as the primary front-end for users to interact with the trained models.
+The `gui_app.py` script is a fully featured graphical application built with `customtkinter`. It serves as the **final product** front-end for users to interact with the trained models.
 
 ### Functionality:
 - **Microphone Integration**: Allows users to record their voice directly from their microphone to test the model's live inference accuracy.
-- **Live Inference**: Automatically chunks live audio or selected files, processes them into spectrogram images using the `magma` colormap, and passes them to the loaded neural network for real-time classification.
+- **Live Inference**: Automatically chunks live audio or selected files, processes them into spectrogram images using the `magma` colormap, and passes them to the loaded neural network for real-time classification. Displays the predicted class and confidence level.
 - **Fine-Tuning Integration**: Provides a visual workflow to select audio files, trigger the `fine_tune_model.py` backend script, and automatically reload the updated weights for immediate testing.
+
+---
+
+## `Visual_EDA.ipynb`
+
+This Jupyter Notebook combines two visual exploratory analyses into a single runnable document.
+
+### Part 1 — Background Noise Study
+Inspects the influence of background noise by comparing spectrogram characteristics across three groups inside `spectrograms/class_0`:
+- **VoxPopuli (clean)** — studio-quality European Parliament recordings.
+- **Local mic (noisy)** — real-world laptop microphone recordings from `my_records/` (prefix `local_record_`).
+- **class_1 target speakers** — shown as a reference baseline.
+
+Three analyses are produced:
+- **Mean Spectrogram Images**: pixel-wise average per group, revealing spectral shape differences caused by noise.
+- **Pixel Intensity Distribution**: overlapping histograms with summary statistics (mean, std, median).
+- **Per-Frame Energy Profile**: mean intensity across the time axis, exposing noise floors and fade patterns.
+
+### Part 2 — Augmentation Visual Comparison
+Displays a `(N × 4)` grid of original class_1 spectrograms alongside each augmentation type used during training:
+
+| Original | Time Mask | Frequency Mask | Gaussian Noise |
+|---|---|---|---|
+
+All output plots are saved to `plots/`.
 
 ---
 
@@ -112,7 +142,23 @@ This Jupyter Notebook performs Model-Driven Exploratory Data Analysis. It levera
 
 ---
 
+## `plots/` (generated)
+
+All scripts that produce visualisations save their output here. This directory is created automatically on first run.
+
+| File | Produced by |
+|---|---|
+| `model_comparison.png` / `.csv` | `model.py` — comparative bar chart and table for all 4 model variants |
+| `{name}_{optimizer}_loss.png` | `model.py` — per-run loss curves (train vs val) |
+| `noise_mean_spectrograms.png` | `Visual_EDA.ipynb` (Part 1) |
+| `noise_intensity_distribution.png` | `Visual_EDA.ipynb` (Part 1) |
+| `noise_energy_profile.png` | `Visual_EDA.ipynb` (Part 1) |
+| `augmentation_comparison.png` | `Visual_EDA.ipynb` (Part 2) |
+
+---
+
 ## To Do
 
 - [ ] Create report
-- [ ] Create unit tests
+- [ ] Create unit tests
+
