@@ -4,7 +4,7 @@ This repository contains tools for fetching audio datasets and generating spectr
 
 ## `get_data.py`
 
-The `get_data.py` script downloads English audio from the [`facebook/voxpopuli`](https://huggingface.co/datasets/facebook/voxpopuli) Hugging Face dataset and organises it into two classes by speaker identity. Class 0 is built from VoxPopuli speakers (large, diverse "world" set). Class 1 target-speaker recordings are sourced from the [IQT Labs Voices dataset](https://iqtlabs.github.io/voices/) and placed in `my_records/`.
+The `get_data.py` script downloads English audio from the [`facebook/voxpopuli`](https://huggingface.co/datasets/facebook/voxpopuli) Hugging Face dataset and organises it into two classes by speaker identity. Class 0 is built from VoxPopuli speakers (large, diverse "world" set). Class 1 target-speaker recordings are sourced from the same dataset and the ones placed in `my_records/`.
 
 ### Functionality:
 - **Hugging Face Integration**: Streams data using the `datasets` library. Requires a `HF_TOKEN` in a `.env` file.
@@ -188,4 +188,4 @@ A brief overview of the key techniques implemented in this project, mapped to th
 
 - [ ] Create report
 - [ ] Create unit tests
-
+
