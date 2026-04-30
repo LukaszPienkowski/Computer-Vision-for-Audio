@@ -4,7 +4,7 @@ This repository contains tools for fetching audio datasets and generating spectr
 
 ## `get_data.py`
 
-The `get_data.py` script downloads English audio from the `facebook/voxpopuli` Hugging Face dataset and organises it into two classes by speaker identity.
+The `get_data.py` script downloads English audio from the [`facebook/voxpopuli`](https://huggingface.co/datasets/facebook/voxpopuli) Hugging Face dataset and organises it into two classes by speaker identity. Class 0 is built from VoxPopuli speakers (large, diverse "world" set). Class 1 target-speaker recordings are sourced from the [IQT Labs Voices dataset](https://iqtlabs.github.io/voices/) and placed in `my_records/`.
 
 ### Functionality:
 - **Hugging Face Integration**: Streams data using the `datasets` library. Requires a `HF_TOKEN` in a `.env` file.
@@ -72,6 +72,7 @@ The `model.py` script defines the Neural Network architectures and contains trai
   - Class-weighted `CrossEntropyLoss` to handle class imbalance.
   - Early stopping monitored on the **validation** set (not the test set).
   - Choice of **Adam** (`lr=0.001`) or **SGD** (`lr=0.01`, momentum=0.9, weight_decay=1e-4, StepLR scheduler).
+  - **Model serialisation**: Best weights are saved to `models/{name}_best.pth` (Adam) or `models/{name}_SGD_best.pth` (SGD) via `torch.save`. The best checkpoint is reloaded automatically before final evaluation.
   - Loss curve saved to `plots/` after each run.
 - **Standalone Execution**: Trains `CustomCNN` and `DeepCNN` with both Adam and SGD (4 variants total), prints FAR/FRR for each split, and saves a comparative bar chart and CSV to `plots/`.
 
@@ -86,7 +87,7 @@ The `fine_tune_model.py` script adapts a pre-trained base model to recognise add
 
 ## `gui_app.py`
 
-The `gui_app.py` script is a fully featured graphical application built with `customtkinter`. It serves as the **final product** front-end for users to interact with the trained models.
+The `gui_app.py` script is a fully featured graphical application built with `customtkinter`. It serves as the **final product** front-end for users to interact with the trained models. It fulfils the *"Jupyter-notebook-based program"* role described in the project brief — the decision to use a dedicated GUI app (rather than a notebook) was made to enable real-time microphone streaming, which is not reliably achievable inside a notebook kernel.
 
 ### Functionality:
 - **Microphone Integration**: Allows users to record their voice directly from their microphone to test the model's live inference accuracy.
@@ -159,7 +160,7 @@ All scripts that produce visualisations save their output here. This directory i
 
 ## Techniques & Functionalities Used
 
-A brief overview of the key techniques implemented in this project, mapped to the course requirements.
+A brief overview of the key techniques implemented in this project, mapped to the course requirements. The project satisfies the **minimum four architectural/training techniques** required by the brief (items marked ✱ below correspond directly to the four chosen techniques from the requirement list):
 
 | Requirement | Implementation |
 |---|---|
@@ -167,9 +168,12 @@ A brief overview of the key techniques implemented in this project, mapped to th
 | **Data cleaning** | Silence removal, duplicate detection (MD5), fade-out trimming in `generating_spectrograms.py` |
 | **Speaker-level train/val/test split** | `speaker_level_split` in `model.py` — 70/15/15, no leakage across splits |
 | **FAR / FRR metrics** | `evaluate_detailed` in `model.py` — reported for all three splits |
-| **Data augmentation** | Time mask, frequency mask, Gaussian noise — `audio_utils.py` & `augment_spectrograms.py` |
-| **CNN architectures** | `CustomCNN` (3-layer) and `DeepCNN` (5-layer VGG-style), both with batch normalisation |
-| **Optimiser comparison** | Adam vs. SGD (with StepLR scheduler) — 4 variants trained and compared in `model.py` |
+| ✱ **Data augmentation** *(req. a)* | Time mask, frequency mask, Gaussian noise — `audio_utils.py` & `augment_spectrograms.py`; silence removal & 4-second segment length also covered |
+| ✱ **CNN architecture depth** *(req. b)* | `CustomCNN` (3-layer) vs. `DeepCNN` (5-layer VGG-style) — different number and size of layers |
+| ✱ **Optimiser comparison** *(req. c)* | Adam vs. SGD (with StepLR scheduler, weight decay) — 4 variants trained and compared in `model.py` |
+| ✱ **Batch normalisation** *(req. d)* | Applied after every convolutional layer in both `CustomCNN` and `DeepCNN` |
+| **Dropout** | `CustomCNN`: 0.4; `DeepCNN`: 0.5 — reduces overfitting in both architectures |
+| **Model serialisation** | Best weights saved to `models/*.pth` via `torch.save`; reloaded for evaluation and fine-tuning |
 | **Class imbalance handling** | `WeightedRandomSampler` + class-weighted `CrossEntropyLoss` |
 | **Transfer learning / fine-tuning** | `fine_tune_model.py` — adapts the base model to new speakers without catastrophic forgetting |
 | **Adding a new person to Class 1** | End-to-end workflow: `fine_tune_model.py` → `gui_app.py` fine-tune button |
