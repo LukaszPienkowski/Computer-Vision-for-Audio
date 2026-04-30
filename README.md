@@ -188,4 +188,6 @@ A brief overview of the key techniques implemented in this project, mapped to th
 
 - [ ] Create report
 - [ ] Create unit tests
-
+- [ ] Create models without batch normalisation
+- [ ] Undersample class 0 - in the model file
+- [ ] Add possibility to record data for fine tunning in gui_app
