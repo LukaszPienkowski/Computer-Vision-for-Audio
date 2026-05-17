@@ -2,6 +2,7 @@ import librosa
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
+import random
 
 def generate_mel_spectrogram(y, sr, n_mels=128, fmax=8000):
     """
@@ -71,7 +72,6 @@ def time_mask(img, max_mask_width=15):
     Returns:
         PIL.Image: The masked image.
     """
-    import random
     img_arr = np.array(img)
     mask_width = random.randint(1, max_mask_width)
     start = random.randint(0, max(1, img_arr.shape[1] - mask_width))
@@ -93,7 +93,6 @@ def freq_mask(img, max_mask_width=15):
     Returns:
         PIL.Image: The masked image.
     """
-    import random
     img_arr = np.array(img)
     mask_width = random.randint(1, max_mask_width)
     start = random.randint(0, max(1, img_arr.shape[0] - mask_width))

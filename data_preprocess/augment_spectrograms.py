@@ -80,8 +80,12 @@ def main():
     class_1_files = [f for f in os.listdir(class_1_dir) if f.endswith('.png') and not '_aug_' in f]
     
     print(f"Class 0: {len(class_0_files)} | Class 1: {len(class_1_files)}")
+    
     augment_added_data(added_dir=class_1_dir, factor=2)
+    
+    final_class_0_count = len([f for f in os.listdir(class_0_dir) if f.endswith('.png')])
     final_class_1_count = len([f for f in os.listdir(class_1_dir) if f.endswith('.png')])
+    print(f"Augmentation complete. Class 0 now has {final_class_0_count} files.")
     print(f"Augmentation complete. Class 1 now has {final_class_1_count} files.")
 
 

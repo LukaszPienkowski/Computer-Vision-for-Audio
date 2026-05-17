@@ -10,7 +10,7 @@ load_dotenv()
 hf_token = os.getenv("HF_TOKEN")
 
 
-def main(limit=300, class1_speakers=5, dataset_name="facebook/voxpopuli"):
+def main(limit=300, class1_speakers=30, dataset_name="facebook/voxpopuli"):
     """
     Downloads English audio data from VoxPopuli, collects 'limit' unique speakers
     into class_0, then randomly moves 'class1_speakers' of them into class_1.
@@ -20,8 +20,8 @@ def main(limit=300, class1_speakers=5, dataset_name="facebook/voxpopuli"):
     differences. Class 1 is intentionally small, Class 0 is intentionally huge.
 
     Args:
-        limit (int): Number of unique speakers to download into class_0 (default: 500).
-        class1_speakers (int): How many speakers to randomly promote to class_1 (default: 7).
+        limit (int): Number of unique speakers to download into class_0 (default: 300).
+        class1_speakers (int): How many speakers to randomly promote to class_1 (default: 30).
         dataset_name (str): HuggingFace dataset name (default: 'facebook/voxpopuli').
 
     Details:
@@ -77,7 +77,7 @@ def main(limit=300, class1_speakers=5, dataset_name="facebook/voxpopuli"):
     print(f"Collected {downloaded} speakers into class_0.")
 
     # Randomly promote a small subset to class_1
-    n_to_move = random.randint(5, class1_speakers)
+    n_to_move = class1_speakers
     target_speakers = random.sample(list(speaker_to_file.keys()), min(n_to_move, len(speaker_to_file)))
     print(f"Randomly promoting {len(target_speakers)} speakers to class_1: {target_speakers}")
 
